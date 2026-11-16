@@ -6,7 +6,7 @@
 
 ## English
 
-Plugin Closed Captions & Subtitles engine for **Half-Life 1 (25th Anniversary Update)**, **Half-Life: Uplink**, and **Half-Life: MMod**, powered by a standalone OpenGL texture-atlas overlay and proxy `version.dll`[cite: 1].
+Plugin Closed Captions & Subtitles engine for **Half-Life 1 (25th Anniversary Update)**, **Half-Life: Uplink**, and **Half-Life: MMod**, powered by a standalone OpenGL texture-atlas overlay and proxy `version.dll`.
 
 Since the original 1998 GoldSrc engine has no built-in subtitle system, this plugin hooks audio playback directly in the engine and renders crisp, color-coded captions on top of the frame.
 
