@@ -7,7 +7,6 @@
 [![Engine](https://img.shields.io/badge/Engine-GoldSrc%20(1998)-orange?style=for-the-badge)](https://developer.valvesoftware.com/wiki/GoldSrc)
 [![Graphics](https://img.shields.io/badge/Overlay-OpenGL-5586A4?style=for-the-badge&logo=opengl&logoColor=white)](https://www.opengl.org/)
 [![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)]()
-[![Release](https://img.shields.io/github/v/release/[USER]/[REPO]?style=for-the-badge&color=success&label=Release)](https://github.com/[USER]/[REPO]/releases)
 [![License](https://img.shields.io/github/license/[USER]/[REPO]?style=for-the-badge&color=blue&label=License)](LICENSE)
 
 [Скачать релиз](https://github.com/[USER]/[REPO]/releases) • [Сообщить об ошибке](https://github.com/[USER]/[REPO]/issues)
