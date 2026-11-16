@@ -11,7 +11,7 @@ Plugin Closed Captions & Subtitles engine for **Half-Life 1 (25th Anniversary Up
 Since the original 1998 GoldSrc engine has no built-in subtitle system, this plugin hooks audio playback directly in the engine and renders crisp, color-coded captions on top of the frame.
 
 ### Installation
-1. Download the latest **RU** or **EN** archive from the **[Releases](https://github.com/grvelvet/GoldSrc-Closed-Captions/releases/latest)** page.
+1. Download the latest archive from the **[Releases](https://github.com/grvelvet/GoldSrc-Closed-Captions/releases/latest)** page.
 2. Extract the archive contents directly into your `Half-Life` root directory (next to `hl.exe`).
 3. Launch the game and play.
 
@@ -36,7 +36,7 @@ Since the original 1998 GoldSrc engine has no built-in subtitle system, this plu
 * **Гибкая настройка:** размер шрифта, цвета ролей и дистанция слышимости настраиваются в `subtitles.ini`, а базы реплик хранятся в открытых `.tsv`-таблицах[cite: 1].
 
 ### Установка
-1. Скачайте актуальный архив (**RU** или **EN**) со страницы **[Releases](https://github.com/grvelvet/GoldSrc-Closed-Captions/releases/latest)**.
+1. Скачайте актуальный архив со страницы **[Releases](https://github.com/grvelvet/GoldSrc-Closed-Captions/releases/latest)**.
 2. Распакуйте содержимое архива в корневую папку `Half-Life` (рядом с `hl.exe`).
 3. Запускайте игру — всё работает сразу после распаковки.
 
