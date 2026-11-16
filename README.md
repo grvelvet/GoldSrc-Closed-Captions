@@ -45,6 +45,6 @@ Since the original 1998 GoldSrc engine has no built-in subtitle system, this plu
 > **⚠️ Важно (только для одиночной игры / VAC):**  
 > Плагин перехватывает функции движка в памяти процесса и предназначен **строго для одиночной кампании**. Перед входом на мультиплеерные серверы с защитой **VAC** обязательно уберите `version.dll` из папки с игрой.
 
-### В планах (Roadmap)
+### В планах
 * Поддержка **Half-Life: Opposing Force** (`gearbox`)
 * Поддержка **Half-Life: Blue Shift** (`bshift`)
