@@ -1,4 +1,5 @@
 #pragma once
+#include <windows.h>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -35,7 +36,7 @@ struct Config {
 
     // [Visual]
     std::string preset = "default";
-    std::string font_name = "Trebuchet MS";
+    std::string font_name = "Tahoma";
     int font_size = 0;
     int bottom_margin_pct = 13;
     int max_width_pct = 62;
@@ -78,7 +79,7 @@ struct Config {
             text_cursor = false;
         } else {
             preset = "default";
-            font_name = "Trebuchet MS";
+            font_name = "Tahoma";
             bg_style = "rounded";
             bg_color = {0, 0, 0};
             bg_alpha = 128;
@@ -91,6 +92,7 @@ struct Config {
     }
 
     // [Files]
+    std::string language = "auto";
     std::string fallback_dir = "valve";
     std::string subtitles_pattern = "subtitles*.tsv";
     std::string titles_pattern = "titles*.tsv";
@@ -102,6 +104,40 @@ struct Config {
     // [Roles]
     std::vector<RoleRule> roles;
 
+    static std::string DetectAutoLanguage() {
+        if (const char* cmd = GetCommandLineA()) {
+            std::string lc = Lower(cmd);
+            if (lc.find("-language russian") != std::string::npos) return "ru";
+            if (lc.find("-language english") != std::string::npos) return "en";
+        }
+        HKEY hKey = nullptr;
+        if (RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\Valve\\Steam", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+            char buf[64]{};
+            DWORD sz = sizeof(buf);
+            DWORD type = 0;
+            LSTATUS st = RegQueryValueExA(hKey, "Language", nullptr, &type, reinterpret_cast<LPBYTE>(buf), &sz);
+            RegCloseKey(hKey);
+            if (st == ERROR_SUCCESS && type == REG_SZ && buf[0]) {
+                return (Lower(buf) == "russian") ? "ru" : "en";
+            }
+        }
+        return ((GetUserDefaultUILanguage() & 0xFF) == LANG_RUSSIAN) ? "ru" : "en";
+    }
+
+    void ApplyLanguage(const std::string& lang) {
+        std::string l = Lower(lang);
+        if (l == "auto") l = DetectAutoLanguage();
+        if (l == "ru" || l == "russian") {
+            language = "ru";
+            subtitles_pattern = "subtitles_ru.tsv";
+            titles_pattern = "titles_ru.tsv";
+        } else if (l == "en" || l == "english") {
+            language = "en";
+            subtitles_pattern = "subtitles_en.tsv";
+            titles_pattern = "titles_en.tsv";
+        }
+    }
+
     static std::string Trim(const std::string& s) {
         size_t a = 0, b = s.size();
         while (a < b && (unsigned char)s[a] <= ' ') a++;
@@ -112,6 +148,22 @@ struct Config {
     static std::string Lower(std::string s) {
         for (char& c : s) c = (char)std::tolower((unsigned char)c);
         return s;
+    }
+
+    static int ParseInt(const std::string& val, int def) {
+        try {
+            return val.empty() ? def : std::stoi(val);
+        } catch (...) {
+            return def;
+        }
+    }
+
+    static float ParseFloat(const std::string& val, float def) {
+        try {
+            return val.empty() ? def : std::stof(val);
+        } catch (...) {
+            return def;
+        }
     }
 
     static Rgb ParseRgb(const std::string& val, Rgb def) {
@@ -175,34 +227,35 @@ struct Config {
             std::string v = Trim(t.substr(eq + 1));
 
             if (section == "filtering") {
-                if (k == "max_distance") max_distance = std::stof(v);
-                else if (k == "glass_max_distance") glass_max_distance = std::stof(v);
-                else if (k == "min_volume") min_volume = std::stof(v);
-                else if (k == "check_occlusion") check_occlusion = (std::stoi(v) != 0);
-                else if (k == "enable_vox") enable_vox = (std::stoi(v) != 0);
-                else if (k == "enable_hev") enable_hev = (std::stoi(v) != 0);
-                else if (k == "restore_unused_hev") restore_unused_hev = (std::stoi(v) != 0);
-                else if (k == "enable_npc") enable_npc = (std::stoi(v) != 0);
-                else if (k == "debug_log") debug_log = (std::stoi(v) != 0);
+                if (k == "max_distance") max_distance = ParseFloat(v, max_distance);
+                else if (k == "glass_max_distance") glass_max_distance = ParseFloat(v, glass_max_distance);
+                else if (k == "min_volume") min_volume = ParseFloat(v, min_volume);
+                else if (k == "check_occlusion") check_occlusion = (ParseInt(v, check_occlusion ? 1 : 0) != 0);
+                else if (k == "enable_vox") enable_vox = (ParseInt(v, enable_vox ? 1 : 0) != 0);
+                else if (k == "enable_hev") enable_hev = (ParseInt(v, enable_hev ? 1 : 0) != 0);
+                else if (k == "restore_unused_hev") restore_unused_hev = (ParseInt(v, restore_unused_hev ? 1 : 0) != 0);
+                else if (k == "enable_npc") enable_npc = (ParseInt(v, enable_npc ? 1 : 0) != 0);
+                else if (k == "debug_log") debug_log = (ParseInt(v, debug_log ? 1 : 0) != 0);
             } else if (section == "visual") {
                 if (k == "preset") ApplyPreset(v);
                 else if (k == "font_name") font_name = v;
-                else if (k == "font_size") font_size = std::stoi(v);
-                else if (k == "bottom_margin_pct") bottom_margin_pct = std::clamp(std::stoi(v), 2, 45);
-                else if (k == "max_width_pct") max_width_pct = std::clamp(std::stoi(v), 20, 95);
+                else if (k == "font_size") font_size = ParseInt(v, font_size);
+                else if (k == "bottom_margin_pct") bottom_margin_pct = std::clamp(ParseInt(v, bottom_margin_pct), 2, 45);
+                else if (k == "max_width_pct") max_width_pct = std::clamp(ParseInt(v, max_width_pct), 20, 95);
                 else if (k == "bg_color") bg_color = ParseRgb(v, bg_color);
-                else if (k == "bg_alpha") bg_alpha = std::clamp(std::stoi(v), 0, 255);
+                else if (k == "bg_alpha") bg_alpha = std::clamp(ParseInt(v, bg_alpha), 0, 255);
                 else if (k == "bg_style") bg_style = Lower(v);
-                else if (k == "bg_radius") bg_radius = std::clamp(std::stoi(v), 0, 24);
+                else if (k == "bg_radius") bg_radius = std::clamp(ParseInt(v, bg_radius), 0, 24);
                 else if (k == "bg_border_color") bg_border_color = ParseRgb(v, bg_border_color);
-                else if (k == "bg_border_alpha") bg_border_alpha = std::clamp(std::stoi(v), 0, 255);
-                else if (k == "text_glow") text_glow = (std::stoi(v) != 0);
-                else if (k == "text_glow_alpha") text_glow_alpha = std::clamp(std::stoi(v), 0, 255);
-                else if (k == "text_cursor") text_cursor = (std::stoi(v) != 0);
-                else if (k == "max_lines") max_lines = std::clamp(std::stoi(v), 1, 10);
-                else if (k == "max_lines_per_caption") max_lines_per_caption = std::clamp(std::stoi(v), 0, 10);
+                else if (k == "bg_border_alpha") bg_border_alpha = std::clamp(ParseInt(v, bg_border_alpha), 0, 255);
+                else if (k == "text_glow") text_glow = (ParseInt(v, text_glow ? 1 : 0) != 0);
+                else if (k == "text_glow_alpha") text_glow_alpha = std::clamp(ParseInt(v, text_glow_alpha), 0, 255);
+                else if (k == "text_cursor") text_cursor = (ParseInt(v, text_cursor ? 1 : 0) != 0);
+                else if (k == "max_lines") max_lines = std::clamp(ParseInt(v, max_lines), 1, 10);
+                else if (k == "max_lines_per_caption") max_lines_per_caption = std::clamp(ParseInt(v, max_lines_per_caption), 0, 10);
             } else if (section == "files") {
-                if (k == "fallback_dir" && !v.empty()) fallback_dir = v;
+                if (k == "language" && !v.empty()) ApplyLanguage(v);
+                else if (k == "fallback_dir" && !v.empty()) fallback_dir = v;
                 else if (k == "subtitles_pattern" && !v.empty()) subtitles_pattern = v;
                 else if (k == "titles_pattern" && !v.empty()) titles_pattern = v;
             } else if (section == "colors") {

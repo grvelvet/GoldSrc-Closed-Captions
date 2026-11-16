@@ -19,6 +19,7 @@ struct Glyph {
     float u1 = 0.0f;
     float v1 = 0.0f;
     int xOff = 0;
+    int yOff = 0;
     int w = 0;
     int h = 0;
     int advance = 0;
@@ -162,15 +163,18 @@ struct GlApi {
 class FontAtlas {
 public:
     static constexpr int kAtlasSize = 1024;
-    static constexpr int kGlyphPad = 3;
+    static constexpr int kGlyphPad = 6;
+    static constexpr int kTopPad = 2;
 
     ~FontAtlas() { DestroyGdi(); }
 
-    bool EnsureReady(GlApi& gl, HGLRC ctx, const std::wstring& faceName, int tall) {
+    bool EnsureReady(GlApi& gl, HGLRC ctx, const std::wstring& faceName, int tall,
+                     bool italic = false, bool bold = true) {
         if (!gl.Load() || !ctx) return false;
         gl.ResolveExtensions();
 
-        if (tex_ != 0 && ctx_ == ctx && face_ == faceName && tall_ == tall) {
+        if (tex_ != 0 && ctx_ == ctx && face_ == faceName && tall_ == tall &&
+            italic_ == italic && bold_ == bold) {
             return true;
         }
         if (tex_ != 0 && ctx_ == ctx && gl.glDeleteTextures) {
@@ -180,12 +184,14 @@ public:
         ctx_ = ctx;
         face_ = faceName;
         tall_ = tall;
+        italic_ = italic;
+        bold_ = bold;
         glyphs_.clear();
         penX_ = 1;
         penY_ = 1;
         rowH_ = 0;
 
-        if (!InitGdi(faceName, tall)) return false;
+        if (!InitGdi(faceName, tall, italic, bold)) return false;
 
         std::vector<uint8_t> atlasRgba((size_t)kAtlasSize * kAtlasSize * 4, 0);
         auto bake = [&](wchar_t ch) { RasterizeIntoBuffer(ch, atlasRgba.data()); };
@@ -289,18 +295,18 @@ private:
                              nullptr, &nFonts);
     }
 
-    bool InitGdi(const std::wstring& faceName, int tall) {
+    bool InitGdi(const std::wstring& faceName, int tall, bool italic = false, bool bold = true) {
         DestroyGdi();
         EnsureEmbeddedFontsLoaded();
         hdc_ = CreateCompatibleDC(nullptr);
         if (!hdc_) return false;
 
-        int weight = (faceName == L"Classic Console Neue") ? FW_NORMAL : FW_BOLD;
-        hfont_ = CreateFontW(-tall, 0, 0, 0, weight, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+        int weight = (!bold || faceName == L"Classic Console Neue") ? FW_NORMAL : FW_BOLD;
+        hfont_ = CreateFontW(-tall, 0, 0, 0, weight, italic ? TRUE : FALSE, FALSE, FALSE, DEFAULT_CHARSET,
                              OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
                              DEFAULT_PITCH | FF_DONTCARE, faceName.c_str());
         if (!hfont_) {
-            hfont_ = CreateFontW(-tall, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+            hfont_ = CreateFontW(-tall, 0, 0, 0, weight, italic ? TRUE : FALSE, FALSE, FALSE, DEFAULT_CHARSET,
                                  OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY,
                                  DEFAULT_PITCH | FF_DONTCARE, L"Tahoma");
         }
@@ -311,7 +317,7 @@ private:
         GetTextMetricsW(hdc_, &tm);
         lineH_ = std::max(14, (int)tm.tmHeight);
         scratchW_ = std::max(128, lineH_ * 3);
-        scratchH_ = lineH_ + 4;
+        scratchH_ = lineH_ + kTopPad + 6;
 
         BITMAPINFO bmi{};
         bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -353,10 +359,10 @@ private:
         GetTextExtentPoint32W(hdc_, &ch, 1, &sz);
         outAdv = std::max(0, (int)sz.cx);
         outW = std::clamp(outAdv + kGlyphPad * 2, 1, scratchW_);
-        outH = std::min(lineH_, scratchH_);
+        outH = std::min(lineH_ + kTopPad + 2, scratchH_);
 
         std::memset(dibBits_, 0, (size_t)scratchW_ * scratchH_ * 4);
-        ExtTextOutW(hdc_, kGlyphPad, 0, 0, nullptr, &ch, 1, nullptr);
+        ExtTextOutW(hdc_, kGlyphPad, kTopPad, 0, nullptr, &ch, 1, nullptr);
         GdiFlush();
 
         outRgba.resize((size_t)outW * outH * 4);
@@ -396,6 +402,7 @@ private:
         g.u1 = (float)(ax + w) / (float)kAtlasSize;
         g.v1 = (float)(ay + h) / (float)kAtlasSize;
         g.xOff = -kGlyphPad;
+        g.yOff = -kTopPad;
         g.w = w;
         g.h = h;
         g.advance = adv;
@@ -446,7 +453,7 @@ private:
             if (it == glyphs_.end()) continue;
             const Glyph& g = it->second;
             float x0 = cx + (float)g.xOff;
-            float y0 = startY;
+            float y0 = startY + (float)g.yOff;
             float x1 = x0 + (float)g.w;
             float y1 = y0 + (float)g.h;
             gl.glTexCoord2f(g.u0, g.v0); gl.glVertex2f(x0, y0);
@@ -469,6 +476,8 @@ private:
     HGLRC ctx_ = nullptr;
     std::wstring face_;
     int tall_ = 0;
+    bool italic_ = false;
+    bool bold_ = true;
     int lineH_ = 16;
     unsigned int tex_ = 0;
     int penX_ = 1;

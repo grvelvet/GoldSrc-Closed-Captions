@@ -107,6 +107,8 @@ size_t DropCaptionsForChannelLocked(int entnum, int channel, const std::string* 
 cl_enginefunc_t* g_engfuncs = nullptr;
 glfont::GlApi g_gl;
 glfont::FontAtlas g_atlas;
+glfont::FontAtlas g_voxAtlas;
+glfont::FontAtlas g_speakerAtlas;
 glfont::FontAtlas g_titleAtlas;
 int g_screenW = 0;
 int g_screenH = 0;
@@ -402,7 +404,11 @@ void HandleSound(int entnum, int entchannel, bool isStatic, sfx_t* sfx, float* o
 
     bool isHgrunt = (norm.rfind("hg_", 0) == 0 || norm.rfind("hgrunt/", 0) == 0);
     bool isSiloSci = (norm.rfind("sc_silo", 0) == 0 || norm.rfind("scientist/c1a3_sci_silo", 0) == 0);
-    float effMaxDist = isHgrunt ? std::max(maxDist, 1100.0f) : (isSiloSci ? std::max(maxDist, 1500.0f) : maxDist);
+    bool isScriptedBarney = (norm == "ba_assn" || norm == "barney/c2a3_ba_assn" ||
+                             norm == "ba_launch" || norm == "barney/c2a2_ba_launch");
+    float effMaxDist = isHgrunt ? std::max(maxDist, 1100.0f)
+                     : (isSiloSci ? std::max(maxDist, 1500.0f)
+                     : (isScriptedBarney ? std::max(maxDist, 1200.0f) : maxDist));
 
     float dist = 0.0f;
     if (!isGlobal && origin && g_hasViewOrg) {
@@ -414,7 +420,7 @@ void HandleSound(int entnum, int entchannel, bool isStatic, sfx_t* sfx, float* o
             LogMsg("[sfx-skip] too_far raw='%s' norm='%s' dist=%.0f max=%.0f atten=%.2f", sfx->name, norm.c_str(), dist, effMaxDist, attenuation);
             return;
         }
-        bool shouldCheckOcc = checkOcc && !isSiloSci && !(isHgrunt && dist <= 750.0f);
+        bool shouldCheckOcc = checkOcc && !isSiloSci && !isScriptedBarney && !(isHgrunt && dist <= 750.0f);
         if (shouldCheckOcc && IsSoundOccluded(origin, dist)) {
             LogMsg("[sfx-skip] occluded raw='%s' norm='%s' dist=%.0f atten=%.2f", sfx->name, norm.c_str(), dist, attenuation);
             return;
@@ -751,10 +757,11 @@ std::vector<CaptionPage> BuildCaptionPages(const std::wstring& fullText, ULONGLO
     return pages;
 }
 
-const std::wstring& GetActiveCaptionText(ActiveCaption& cap, ULONGLONG nowMs, int wrapW, int maxLinesPerCap) {
+template <typename MeasureFn>
+const std::wstring& GetActiveCaptionText(ActiveCaption& cap, const MeasureFn& measureWidth,
+                                          ULONGLONG nowMs, int wrapW, int maxLinesPerCap) {
     if (cap.pages.empty() || cap.cachedWrapW != wrapW || cap.cachedMaxLines != maxLinesPerCap) {
-        cap.pages = BuildCaptionPages(cap.text, cap.start_ms, cap.expire_ms, maxLinesPerCap, wrapW,
-                                      [](const std::wstring& s) { return g_atlas.MeasureWidth(g_gl, s); });
+        cap.pages = BuildCaptionPages(cap.text, cap.start_ms, cap.expire_ms, maxLinesPerCap, wrapW, measureWidth);
         cap.cachedWrapW = wrapW;
         cap.cachedMaxLines = maxLinesPerCap;
     }
@@ -784,7 +791,7 @@ void DrawActiveTitles(int screenW, int screenH, int fontH) {
             ULONGLONG outEl = elapsed - (at.fadein_ms + at.hold_ms);
             alphaF = 1.0f - (float)outEl / (float)at.fadeout_ms;
         }
-        int alpha = std::clamp((int)(alphaF * 255.0f), 0, 255);
+        int alpha = std::clamp((int)(alphaF * 180.0f), 0, 180);
         if (alpha <= 0) continue;
 
         std::vector<std::wstring> lines;
@@ -807,7 +814,7 @@ void DrawActiveTitles(int screenW, int screenH, int fontH) {
             int w = g_titleAtlas.MeasureWidth(g_gl, lines[li]);
             int x = (at.x < 0.0f) ? (screenW - w) / 2 : (int)(at.x * (float)screenW);
             int y = baseY + (int)li * lineStep;
-            g_titleAtlas.DrawText(g_gl, x, y, lines[li], at.r, at.g, at.b, (uint8_t)alpha, false);
+            g_titleAtlas.DrawText(g_gl, x, y, lines[li], 255, 255, 255, (uint8_t)alpha, false);
         }
     }
 }
@@ -923,10 +930,17 @@ void RenderSubtitlesOverlay() {
 
     int tall = (g_cfg.font_size > 0) ? g_cfg.font_size : std::max(16, (g_screenH * 28) / 1080);
     std::wstring face = Utf8ToWide(g_cfg.font_name);
-    if (face.empty()) face = L"Trebuchet MS";
-    if (!g_atlas.EnsureReady(g_gl, ctx, face, tall)) {
+    if (face.empty()) face = L"Tahoma";
+    const bool isDefaultPreset = (g_cfg.preset == "default");
+    if (!g_atlas.EnsureReady(g_gl, ctx, face, tall, false, !isDefaultPreset)) {
         ReleaseSRWLockExclusive(&g_lock);
         return;
+    }
+    bool voxReady = false;
+    bool speakerReady = false;
+    if (isDefaultPreset) {
+        voxReady = g_voxAtlas.EnsureReady(g_gl, ctx, L"Tahoma", tall, true, false);
+        speakerReady = g_speakerAtlas.EnsureReady(g_gl, ctx, face, tall, false, true);
     }
 
     g_gl.glPushAttrib(glfont::GlApi::kAllAttribBits);
@@ -966,8 +980,8 @@ void RenderSubtitlesOverlay() {
     int fontH = g_atlas.LineHeight();
 
     if (!g_activeTitles.empty()) {
-        int titleTall = std::max(16, (g_screenH * 28) / 1080);
-        if (g_titleAtlas.EnsureReady(g_gl, ctx, L"Trebuchet MS", titleTall)) {
+        int titleTall = std::max(16, (g_screenH * 24) / 1080);
+        if (g_titleAtlas.EnsureReady(g_gl, ctx, L"Trebuchet MS", titleTall, false, false)) {
             DrawActiveTitles(g_screenW, g_screenH, g_titleAtlas.LineHeight());
         }
     }
@@ -976,7 +990,41 @@ void RenderSubtitlesOverlay() {
         int maxBoxW = (g_screenW * g_cfg.max_width_pct) / 100;
         int lineStep = fontH + 3;
 
-        struct RenderLine { std::wstring txt; subs::Rgb col; int w; uint8_t alpha; };
+        struct RenderLine {
+            std::wstring txt;
+            subs::Rgb col;
+            int w;
+            uint8_t alpha;
+            glfont::FontAtlas* atlas;
+            bool isFirstLine;
+        };
+        auto drawLineText = [&](const RenderLine& rl, int x, int y, bool glow, uint8_t glowA) {
+            glfont::FontAtlas& a = *rl.atlas;
+            if (!isDefaultPreset) {
+                a.DrawText(g_gl, x, y, rl.txt, rl.col.r, rl.col.g, rl.col.b, rl.alpha,
+                           true, glow, rl.col.r, rl.col.g, rl.col.b, glowA);
+                return;
+            }
+            if (rl.isFirstLine && !rl.txt.empty() && rl.txt[0] == L'[') {
+                size_t rb = rl.txt.find(L']');
+                if (rb != std::wstring::npos) {
+                    std::wstring speaker = rl.txt.substr(0, rb + 1);
+                    std::wstring body = rl.txt.substr(rb + 1);
+                    glfont::FontAtlas& spAtlas = speakerReady ? g_speakerAtlas : a;
+                    spAtlas.DrawText(g_gl, x, y, speaker, rl.col.r, rl.col.g, rl.col.b, rl.alpha,
+                                     true, glow, rl.col.r, rl.col.g, rl.col.b, glowA);
+                    if (!body.empty()) {
+                        int spW = spAtlas.MeasureWidth(g_gl, speaker);
+                        a.DrawText(g_gl, x + spW, y, body, 255, 255, 255, rl.alpha,
+                                   true, glow, 255, 255, 255, glowA);
+                    }
+                    return;
+                }
+            }
+            a.DrawText(g_gl, x, y, rl.txt, 255, 255, 255, rl.alpha,
+                       true, glow, 255, 255, 255, glowA);
+        };
+
         std::vector<std::vector<RenderLine>> perCap;
         perCap.reserve(g_captions.size());
         int totalLines = 0;
@@ -989,12 +1037,26 @@ void RenderSubtitlesOverlay() {
                 : 0.0f;
             uint8_t capAlpha = (uint8_t)std::lround(255.0f * std::min(fIn, fOut));
 
+            glfont::FontAtlas& capAtlas = (isDefaultPreset && voxReady && cap.cat == subs::RoleCat::VOX)
+                ? g_voxAtlas : g_atlas;
+            auto measureCap = [&](const std::wstring& s) -> int {
+                if (isDefaultPreset && !s.empty() && s[0] == L'[') {
+                    size_t rb = s.find(L']');
+                    if (rb != std::wstring::npos) {
+                        glfont::FontAtlas& spAtlas = speakerReady ? g_speakerAtlas : capAtlas;
+                        return spAtlas.MeasureWidth(g_gl, s.substr(0, rb + 1)) +
+                               capAtlas.MeasureWidth(g_gl, s.substr(rb + 1));
+                    }
+                }
+                return capAtlas.MeasureWidth(g_gl, s);
+            };
             const std::wstring& pageTxt = GetActiveCaptionText(
-                cap, g_gameMs, maxBoxW - 20, g_cfg.max_lines_per_caption);
+                cap, measureCap, g_gameMs, maxBoxW - 20, g_cfg.max_lines_per_caption);
             std::vector<RenderLine> lines;
-            for (auto& wl : WrapText(pageTxt, maxBoxW - 20)) {
-                int w = g_atlas.MeasureWidth(g_gl, wl);
-                lines.push_back({std::move(wl), cap.color, w, capAlpha});
+            auto wrapped = WrapTextWith(pageTxt, maxBoxW - 20, measureCap);
+            for (size_t wi = 0; wi < wrapped.size(); ++wi) {
+                int w = (wi == 0) ? measureCap(wrapped[wi]) : capAtlas.MeasureWidth(g_gl, wrapped[wi]);
+                lines.push_back({std::move(wrapped[wi]), cap.color, w, capAlpha, &capAtlas, wi == 0});
             }
             totalLines += (int)lines.size();
             perCap.push_back(std::move(lines));
@@ -1041,9 +1103,7 @@ void RenderSubtitlesOverlay() {
                 for (size_t li = 0; li < lines.size(); ++li) {
                     const auto& rl = lines[li];
                     int x = cardX + padX + 8 + (widest - rl.w) / 2;
-                    g_atlas.DrawText(g_gl, x, y, rl.txt, rl.col.r, rl.col.g, rl.col.b, rl.alpha,
-                                     true, g_cfg.text_glow,
-                                     rl.col.r, rl.col.g, rl.col.b, glowA);
+                    drawLineText(rl, x, y, g_cfg.text_glow, glowA);
                     if (drawCursorOnCard && li + 1 == lines.size()) {
                         DrawTerminalCursor(x + rl.w + 4, y, fontH, rl.col.r, rl.col.g, rl.col.b, rl.alpha, g_cfg.text_glow, glowA);
                     }
@@ -1088,9 +1148,7 @@ void RenderSubtitlesOverlay() {
                     const auto& rl = allLines[li];
                     if (rl.alpha > 0) {
                         int x = (g_screenW - rl.w - cursorExtra / 2) / 2;
-                        g_atlas.DrawText(g_gl, x, y, rl.txt, rl.col.r, rl.col.g, rl.col.b, rl.alpha,
-                                         true, g_cfg.text_glow,
-                                         rl.col.r, rl.col.g, rl.col.b, glowA);
+                        drawLineText(rl, x, y, g_cfg.text_glow, glowA);
                         if (g_cfg.text_cursor && li + 1 == allLines.size()) {
                             DrawTerminalCursor(x + rl.w + 4, y, fontH, rl.col.r, rl.col.g, rl.col.b, rl.alpha, g_cfg.text_glow, glowA);
                         }
@@ -1450,7 +1508,16 @@ void __cdecl Hook_Host_Loadgame_f() {
     if (g_origLoadgame) g_origLoadgame();
 }
 
+CRITICAL_SECTION g_hookCs;
+bool g_hookCsInit = false;
+
+struct HookGuard {
+    HookGuard() { if (g_hookCsInit) EnterCriticalSection(&g_hookCs); }
+    ~HookGuard() { if (g_hookCsInit) LeaveCriticalSection(&g_hookCs); }
+};
+
 void TryHookHw(HMODULE hw) {
+    HookGuard guard;
     if (g_hwHooked || !hw) return;
     void* dyn  = hook::FindFunctionByStringXref(hw, "S_StartDynamicSound: %s volume > 255");
     void* stat = hook::FindFunctionByStringXref(hw, "S_StartStaticSound: %s volume > 255");
@@ -1464,6 +1531,7 @@ void TryHookHw(HMODULE hw) {
 }
 
 void TryHookClient(HMODULE cl) {
+    HookGuard guard;
     if (g_clientHooked || !cl) return;
     void* pInit   = (void*)GetProcAddress(cl, "Initialize");
     void* pRedraw = (void*)GetProcAddress(cl, "HUD_Redraw");
@@ -1482,6 +1550,7 @@ void TryHookClient(HMODULE cl) {
 }
 
 void TryHookOpenGL(HMODULE gl) {
+    HookGuard guard;
     if (g_glHooked || !gl) return;
     void* pSwap = (void*)GetProcAddress(gl, "wglSwapBuffers");
     if (pSwap) {
@@ -1504,6 +1573,8 @@ HMODULE WINAPI Hook_LoadLibraryA(LPCSTR lpLibFileName) {
 }
 
 void InitMod() {
+    InitializeCriticalSection(&g_hookCs);
+    g_hookCsInit = true;
     char exePath[MAX_PATH]{};
     GetModuleFileNameA(nullptr, exePath, MAX_PATH);
     std::string ep = exePath;
