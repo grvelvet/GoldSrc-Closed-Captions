@@ -1,6 +1,6 @@
 # GoldSrc Closed Captions (Half-Life 1 Subtitles Engine)
 
-[🇬🇧 English](#english) | [🇷🇺 Русский](#русский)
+[en English](#english) | [🇷🇺 Русский](#русский)
 
 ---
 
