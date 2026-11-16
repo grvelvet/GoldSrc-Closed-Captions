@@ -25,7 +25,7 @@ Since the original 1998 GoldSrc engine has no built-in subtitle system, this plu
 ---
 
 ## Русский
-Плагин движка субтитров (Closed Captions) для **Half-Life 1 (25th Anniversary Update)**, **Half-Life: Uplink** и **Half-Life: MMod** на базе независимого OpenGL-оверлея и прокси-библиотеки `version.dll`[cite: 1].
+Плагин движка субтитров (Closed Captions) для **Half-Life 1 (25th Anniversary Update)**, **Half-Life: Uplink** и **Half-Life: MMod** на базе независимого OpenGL-оверлея и прокси-библиотеки `version.dll`
 
 В оригинальном движке GoldSrc (1998) отсутствует полностью встроенный механизм субтитров, поэтому плагин перехватывает реплики персонажей и окружения на уровне движка и выводит чёткие субтитры  поверх кадра.
 
