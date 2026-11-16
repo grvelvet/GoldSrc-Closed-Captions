@@ -1,50 +1,37 @@
-# GoldSrc Closed Captions (Half-Life 1 Subtitles Engine)
+<div align="center">
 
-[en English](#english) | [🇷🇺 Русский](#русский)
+# Half-Life Closed Captions
 
----
+**Плагин субтитров (Closed Captions) для Half-Life 1 (25th Anniversary Update), Half-Life: Uplink и Half-Life: MMod.**
 
-## English
+[![Engine](https://img.shields.io/badge/Engine-GoldSrc%20(1998)-orange?style=for-the-badge)](https://developer.valvesoftware.com/wiki/GoldSrc)
+[![Graphics](https://img.shields.io/badge/Overlay-OpenGL-5586A4?style=for-the-badge&logo=opengl&logoColor=white)](https://www.opengl.org/)
+[![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)]()
+[![Release](https://img.shields.io/github/v/release/[USER]/[REPO]?style=for-the-badge&color=success&label=Release)](https://github.com/[USER]/[REPO]/releases)
+[![License](https://img.shields.io/github/license/[USER]/[REPO]?style=for-the-badge&color=blue&label=License)](LICENSE)
 
-Plugin Closed Captions & Subtitles engine for **Half-Life 1 (25th Anniversary Update)**, **Half-Life: Uplink**, and **Half-Life: MMod**, powered by a standalone OpenGL texture-atlas overlay and proxy `version.dll`.
+[Скачать релиз](https://github.com/[USER]/[REPO]/releases) • [Сообщить об ошибке](https://github.com/[USER]/[REPO]/issues)
 
-Since the original 1998 GoldSrc engine has no built-in subtitle system, this plugin hooks audio playback directly in the engine and renders crisp, color-coded captions on top of the frame.
-### Features
-* **Full translation of lines:** 
-* **Flexible configuration:** font size, role colors, and hearing distance are configured in `subtitles.ini`, and the line bases are stored in open, easily editable `.tsv` tables.
-
-### Installation
-1. Download the latest archive from the **[Releases](https://github.com/grvelvet/GoldSrc-Closed-Captions/releases/latest)** page.
-2. Extract the archive contents directly into your `Half-Life` root directory (next to `hl.exe`).
-3. Launch the game and play.
-
-> **⚠️ VAC Warning (Single-Player Only):**  
-> This plugin hooks engine functions in memory and is intended **strictly for single-player**. Temporarily remove `version.dll` from the game folder before joining VAC-secured multiplayer servers.
-
-### Roadmap
-* **Half-Life: Opposing Force** (`gearbox`) support
-* **Half-Life: Blue Shift** (`bshift`) support
+</div>
 
 ---
 
-## Русский
-Плагин движка субтитров (Closed Captions) для **Half-Life 1 (25th Anniversary Update)**, **Half-Life: Uplink** и **Half-Life: MMod** на базе независимого OpenGL-оверлея и прокси-библиотеки `version.dll`
+В оригинальном движке GoldSrc (1998) нет встроенной системы субтитров. Этот плагин решает проблему: он перехватывает звуковые события персонажей и окружения на уровне движка и отрисовывает текст поверх кадра через независимый OpenGL-оверлей используя словари (инжект через прокси-библиотеку `version.dll`).
 
-В оригинальном движке GoldSrc (1998) отсутствует полностью встроенный механизм субтитров, поэтому плагин перехватывает реплики персонажей и окружения на уровне движка и выводит субтитры  поверх кадра.
+## Возможности
+- **Полное покрытие:** переведены на русский и английский сюжетные диалоги, реплики  и ключевые звуки окружения.
+- **Гибкая кастомизация:** размер шрифта, цвета для разных персонажей и дистанция слышимости настраиваются в `subtitles.ini`.
+- **Открытая база реплик:** все тексты хранятся в простых `.tsv`текстовых файлах, которые легко править или переводить на другие языки.
 
-### Возможности
-* **Две готовые языковые сборки:**  Мультиязычный архив.
-* **Полный перевод реплик:** 
-* **Гибкая настройка:** размер шрифта, цвета ролей и дистанция слышимости настраиваются в `subtitles.ini`, а базы реплик хранятся в открытых легко редактируемых `.tsv`-таблицах
+## Установка
+1. Скачайте актуальный архив со страницы **[Releases](https://github.com/[USER]/[REPO]/releases)**.
+2. Распакуйте содержимое в корневую папку игры (туда, где находится `hl.exe`).
+3. Запустите игру — плагин подхватится автоматически.
 
-### Установка
-1. Скачайте актуальный архив со страницы **[Releases](https://github.com/grvelvet/GoldSrc-Closed-Captions/releases/latest)**.
-2. Распакуйте содержимое архива в корневую папку `Half-Life` (рядом с `hl.exe`).
-3. Запускайте игру — всё работает сразу после распаковки.
+> [!WARNING]
+> **Внимание (VAC и мультиплеер):**  
+> Плагин внедряется в память процесса и предназначен **строго для одиночной игры**. Перед заходом на мультиплеерные серверы с защитой VAC обязательно удалите или временно уберите `version.dll` из папки с игрой.
 
-> **⚠️ Важно (только для одиночной игры / VAC):**  
-> Плагин перехватывает функции движка в памяти процесса и предназначен **строго для одиночной кампании**. Перед входом на мультиплеерные серверы с защитой **VAC** обязательно уберите `version.dll` из папки с игрой.
-
-### В планах
-* Поддержка **Half-Life: Opposing Force** (`gearbox`)
-* Поддержка **Half-Life: Blue Shift** (`bshift`)
+## В планах (Roadmap)
+- [ ] Поддержка **Half-Life: Opposing Force** (`gearbox`)
+- [ ] Поддержка **Half-Life: Blue Shift** (`bshift`)
